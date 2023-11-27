@@ -1,6 +1,7 @@
 use std::time::Duration;
 use std::io::{BufRead, Write};
 
+use pico_args::Arguments;
 use serde::Serialize;
 use surrealdb::Surreal;
 use surrealdb::engine::local::RocksDb;
@@ -18,13 +19,24 @@ async fn main() -> Result<(), AppError> {
         .strict()
         .query_timeout(Some(Duration::from_secs(5)))
         .transaction_timeout(Some(Duration::from_secs(10)))
-        .user(default_user);
+        .user(default_user.clone());
 
     let mut db_path = std::env::current_dir().expect("valid current dir");
     db_path.push("data");
     std::fs::create_dir_all(&db_path)?;
 
     let mut db = Surreal::new::<RocksDb>((db_path, db_config)).await?;
+    db.signin(default_user).await?;
+    db.use_ns("core").use_db("core").await?;
+
+    let mut cli_args = Arguments::from_env();
+    if cli_args.contains("--init") {
+        let mut init_path = std::env::current_dir().expect("valid current dir");
+        init_path.push("initialization.surql");
+
+        let init_surql = std::fs::read_to_string(&init_path)?;
+        let _responses = db.query(&init_surql).await?;
+    }
 
     let mut prompt_log = std::fs::OpenOptions::new()
         .create(true)
@@ -95,22 +107,24 @@ enum HistoryEntry {
 }
 
 async fn process_prompt(db: &mut Surreal<surrealdb::engine::local::Db>, prompt: &str) -> bool {
-    println!("----|");
-
-    let success = match db.query(prompt).await {
-        Ok(res) => {
-            println!("   OK:\n{res:?}");
-            true
-
-        }
+    let response = match db.query(prompt).await {
+        Ok(resp) => resp,
         Err(err) => {
-            println!("ERROR:\n{err}");
-            false
+            println!("Query Error:\n{err}");
+            return false;
         }
     };
-    println!("----|");
 
-    success
+    match response.check() {
+        Ok(resp) => {
+            println!("Ok:\n{resp:?}");
+            true
+        }
+        Err(err) => {
+            println!("Statement Error:\n{err}");
+            false
+        }
+    }
 }
 
 fn record_history(log_fd: &mut std::fs::File, entry: &HistoryEntry) -> std::io::Result<()> {

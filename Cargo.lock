@@ -2643,6 +2643,7 @@ dependencies = [
 name = "surrealdb-playground"
 version = "0.1.0"
 dependencies = [
+ "pico-args",
  "serde",
  "serde_json",
  "surrealdb",
