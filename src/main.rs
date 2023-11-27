@@ -27,7 +27,6 @@ async fn main() -> Result<(), AppError> {
 
     let mut db = Surreal::new::<RocksDb>((db_path, db_config)).await?;
     db.signin(default_user).await?;
-    db.use_ns("core").use_db("core").await?;
 
     let mut cli_args = Arguments::from_env();
     if cli_args.contains("--init") {
@@ -37,6 +36,8 @@ async fn main() -> Result<(), AppError> {
         let init_surql = std::fs::read_to_string(&init_path)?;
         let _responses = db.query(&init_surql).await?;
     }
+
+    db.use_ns("generative_ontology").use_db("core").await?;
 
     let mut prompt_log = std::fs::OpenOptions::new()
         .create(true)
