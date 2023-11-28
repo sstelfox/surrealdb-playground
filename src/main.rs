@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::time::Duration;
 use std::io::{BufRead, Write};
 
@@ -34,10 +35,13 @@ async fn main() -> Result<(), AppError> {
         init_path.push("initialization.surql");
 
         let init_surql = std::fs::read_to_string(&init_path)?;
-        let _responses = db.query(&init_surql).await?;
-    }
+        let response = db.query(&init_surql).await?;
 
-    db.use_ns("generative_ontology").use_db("core").await?;
+        if let Err(err) = response.check() {
+            println!("failed running initialization: {err:?}");
+            std::process::exit(1);
+        }
+    }
 
     let mut prompt_log = std::fs::OpenOptions::new()
         .create(true)
@@ -46,6 +50,30 @@ async fn main() -> Result<(), AppError> {
         .expect("prompt log to be accessible");
 
     record_history(&mut prompt_log, &HistoryEntry::SessionStart)?;
+
+    #[derive(Serialize)]
+    struct Role<'a> {
+        name: &'a str,
+    }
+
+    let sr = db.signin(surrealdb::opt::auth::Scope {
+        namespace: "generative_ontology",
+        database: "industry",
+        scope: "role",
+        params: Role { name: "ontologist" },
+    }).await;
+
+    if let Err(err) = sr {
+        let mut errors = vec![format!("{err:?}")];
+        let mut source = err.source();
+
+        while let Some(err) = source {
+            errors.push(format!("{err:?}"));
+            source = err.source();
+        }
+
+        println!("errors:\n{}", errors.join("\n"));
+    }
 
     let stdin = std::io::stdin();
     let mut input = stdin.lock().lines();

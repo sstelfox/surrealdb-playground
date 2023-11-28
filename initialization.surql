@@ -2,12 +2,11 @@
 
 -- Create our default namespace and make sure its active
 DEFINE NAMESPACE generative_ontology;
+USE NS generative_ontology;
 
--- Create a database storing central configuration and system properties
-DEFINE DATABASE core;
-
--- Switch to using our freshly created namespace and core
-USE NS generative_ontology DB core;
+-- A database for our industry based ontology
+DEFINE DATABASE industry;
+USE DB industry;
 
 -- We'll act in different roles from within our REPL and those roles should be
 -- restricted to their intended behavior.
@@ -35,3 +34,18 @@ DEFINE SCOPE role
     SIGNIN (
         SELECT * FROM role WHERE name = $name
     );
+
+DEFINE TABLE resource SCHEMAFULL
+    PERMISSIONS
+        FOR CREATE, UPDATE, DELETE WHERE $auth.name = 'ontologist';
+
+DEFINE FIELD name ON resource TYPE string ASSERT string::len($value) > 3;
+DEFINE FIELD description ON role TYPE string;
+
+DEFINE INDEX idx_resource_name ON resource COLUMNS name UNIQUE;
+
+DEFINE TABLE element SCHEMAFULL
+    PERMISSIONS
+        FOR CREATE, UPDATE, DELETE WHERE $auth.name = 'ontologist';
+
+DEFINE FIELD symbol ON element TYPE string ASSERT string::len($value) = 2;
