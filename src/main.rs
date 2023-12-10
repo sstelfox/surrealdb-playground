@@ -56,24 +56,26 @@ async fn main() -> Result<(), AppError> {
         name: &'a str,
     }
 
-    let sr = db.signin(surrealdb::opt::auth::Scope {
-        namespace: "generative_ontology",
-        database: "industry",
-        scope: "role",
-        params: Role { name: "ontologist" },
-    }).await;
+    db.use_ns("generative_ontology").use_db("industry").await.expect("valid");
 
-    if let Err(err) = sr {
-        let mut errors = vec![format!("{err:?}")];
-        let mut source = err.source();
+    //let sr = db.signin(surrealdb::opt::auth::Scope {
+    //    namespace: "generative_ontology",
+    //    database: "industry",
+    //    scope: "role",
+    //    params: Role { name: "ontologist" },
+    //}).await;
 
-        while let Some(err) = source {
-            errors.push(format!("{err:?}"));
-            source = err.source();
-        }
+    //if let Err(err) = sr {
+    //    let mut errors = vec![format!("{err:?}")];
+    //    let mut source = err.source();
 
-        println!("errors:\n{}", errors.join("\n"));
-    }
+    //    while let Some(err) = source {
+    //        errors.push(format!("{err:?}"));
+    //        source = err.source();
+    //    }
+
+    //    println!("errors:\n{}", errors.join("\n"));
+    //}
 
     let stdin = std::io::stdin();
     let mut input = stdin.lock().lines();

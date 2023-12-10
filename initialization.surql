@@ -1,5 +1,7 @@
 -- vim: sw=4 ts=4 expandtab ai ft=sql
 
+BEGIN TRANSACTION;
+
 -- Create our default namespace and make sure its active
 DEFINE NAMESPACE generative_ontology;
 USE NS generative_ontology;
@@ -39,13 +41,24 @@ DEFINE TABLE resource SCHEMAFULL
     PERMISSIONS
         FOR CREATE, UPDATE, DELETE WHERE $auth.name = 'ontologist';
 
-DEFINE FIELD name ON resource TYPE string ASSERT string::len($value) > 3;
 DEFINE FIELD description ON role TYPE string;
-
-DEFINE INDEX idx_resource_name ON resource COLUMNS name UNIQUE;
 
 DEFINE TABLE element SCHEMAFULL
     PERMISSIONS
         FOR CREATE, UPDATE, DELETE WHERE $auth.name = 'ontologist';
 
-DEFINE FIELD symbol ON element TYPE string ASSERT string::len($value) = 2;
+DEFINE FIELD atomic_number ON element TYPE int ASSERT $value > 0;
+DEFINE INDEX idx_element_atomic_number ON resource COLUMNS atomic_number UNIQUE;
+
+DEFINE FIELD symbol ON element TYPE string;
+DEFINE INDEX idx_element_symbol ON resource COLUMNS symbol UNIQUE;
+
+DEFINE TABLE periodic_element_grouping SCHEMAFULL
+    PERMISSIONS
+        FOR CREATE, UPDATE, DELETE WHERE $auth.name = 'ontologist';
+
+CREATE element:hydrogen SET atomic_number = 1, symbol = 'H';
+CREATE element:helium SET atomic_number = 2, symbol = 'He';
+CREATE element:lithium SET atomic_number = 3, symbol = 'Li';
+
+COMMIT TRANSACTION;
